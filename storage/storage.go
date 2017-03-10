@@ -13,9 +13,7 @@
 
 package storage
 
-import (
-	"github.com/prometheus/common/model"
-)
+import "github.com/prometheus/common/model"
 
 // SampleAppender is the interface to append samples to both, local and remote
 // storage. All methods are goroutine-safe.
