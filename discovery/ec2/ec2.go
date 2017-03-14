@@ -21,6 +21,8 @@ import (
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/credentials/ec2rolecreds"
+	"github.com/aws/aws-sdk-go/aws/ec2metadata"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/log"
@@ -76,10 +78,22 @@ type EC2Discovery struct {
 
 // NewDiscovery returns a new EC2Discovery which periodically refreshes its targets.
 func NewDiscovery(conf *config.EC2SDConfig) *EC2Discovery {
-	creds := credentials.NewStaticCredentials(conf.AccessKey, conf.SecretKey, "")
-	if conf.AccessKey == "" && conf.SecretKey == "" {
-		creds = nil
+	providers := []credentials.Provider{
+		&credentials.StaticProvider{
+			Value: credentials.Value{
+				AccessKeyID:     conf.AccessKey,
+				SecretAccessKey: conf.SecretKey,
+				SessionToken:    "",
+			},
+		},
+		&credentials.EnvProvider{},
+		&ec2rolecreds.EC2RoleProvider{
+			Client: ec2metadata.New(session.New(&aws.Config{
+				Region: &conf.Region,
+			})),
+		},
 	}
+	creds := credentials.NewChainCredentials(providers)
 	return &EC2Discovery{
 		aws: &aws.Config{
 			Region:      &conf.Region,
